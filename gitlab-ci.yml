@@ -1,0 +1,64 @@
+# .gitlab-ci.yml
+
+stages:
+  - detect
+
+detect-language:
+  stage: detect
+  image: alpine:latest
+  
+  before_script:
+    - apk add --no-cache bash
+
+  script:
+    - |
+      if [ -f "package.json" ]; then
+        echo "Detected: Node.js"
+        echo "LANGUAGE=nodejs" > detected_language.txt
+
+      elif [ -f "requirements.txt" ] || [ -f "Pipfile" ] || [ -f "pyproject.toml" ]; then
+        echo "Detected: Python"
+        echo "LANGUAGE=python" > detected_language.txt
+
+      elif [ -f "pom.xml" ]; then
+        echo "Detected: Java (Maven)"
+        echo "LANGUAGE=java-maven" > detected_language.txt
+
+      elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+        echo "Detected: Java (Gradle)"
+        echo "LANGUAGE=java-gradle" > detected_language.txt
+
+      elif [ -f "go.mod" ]; then
+        echo "Detected: Go"
+        echo "LANGUAGE=golang" > detected_language.txt
+
+      elif [ -f "Cargo.toml" ]; then
+        echo "Detected: Rust"
+        echo "LANGUAGE=rust" > detected_language.txt
+
+      elif [ -f "composer.json" ]; then
+        echo "Detected: PHP"
+        echo "LANGUAGE=php" > detected_language.txt
+
+      elif [ $(find . -maxdepth 1 -name "*.csproj" | wc -l) -gt 0 ]; then
+        echo "Detected: .NET"
+        echo "LANGUAGE=dotnet" > detected_language.txt
+
+      else
+        echo "ERROR: Could not determine language"
+        echo "LANGUAGE=unknown" > detected_language.txt
+        exit 1
+      fi
+
+    - cat detected_language.txt
+    - echo "Language detection completed successfully"
+
+  artifacts:
+    paths:
+      - detected_language.txt
+    reports:
+      dotenv: detected_language.txt
+
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
